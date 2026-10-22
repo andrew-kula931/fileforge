@@ -70,15 +70,33 @@ executable fileforge
     -- Other library packages from which modules are imported.
     build-depends:
         base,
+        bytestring,
         directory,
         filepath,
         optparse-applicative,
         pandoc,
         process,
-        text
+        text,
+        transformers
 
     -- Directories containing source files.
     hs-source-dirs:   app
 
     -- Base language which the package is written in.
+    default-language: GHC2024
+
+test-suite fileforge-cli
+    import:           warnings
+    type:             exitcode-stdio-1.0
+    main-is:          Main.hs
+    hs-source-dirs:   test
+    build-tool-depends: fileforge:fileforge
+    build-depends:
+        base,
+        bytestring,
+        directory,
+        filepath,
+        pandoc,
+        process,
+        text
     default-language: GHC2024
