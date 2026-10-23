@@ -112,6 +112,7 @@ convertDocument opts = do
 readDocument :: FilePath -> PandocIO Pandoc
 readDocument input =
   case map toLower (takeExtension input) of
+    ".txt" -> readMarkdownFile
     ".pdf" -> do
       extracted <- liftIO (extractPdf input)
       readMarkdown def extracted
@@ -120,7 +121,7 @@ readDocument input =
       readDocx def bytes
     ".md" -> readMarkdownFile
     ".markdown" -> readMarkdownFile
-    _ -> liftIO $ die "fileforge: unsupported input format; use .pdf, .docx, .md, or .markdown"
+    _ -> liftIO $ die "fileforge: unsupported input format; use .pdf, .docx, .txt, .md, or .markdown"
   where
     readMarkdownFile = do
       bytes <- liftIO (BSL.readFile input)
