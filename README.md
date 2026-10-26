@@ -1,11 +1,11 @@
 # FileForge
 
-This repository presents a CLI tool that performs operations on files.
+This repository presents a CLI tool that performs operations/conversions on files.
 
 ## Features
 
-- Reads PDF, DOCX, and Markdown (`.md` or `.markdown`) files.
-- Writes UTF-8 text (`.txt`), DOCX, and Markdown files.
+- Reads PDF, DOCX, Latex, JSON, XML, and Markdown (`.md` or `.markdown`) files.
+- Writes to any of the aforementioned formats (except PDF).
 - Preserves supported document structure with `--formatted`, or flattens the
   content to plain text without it.
 
