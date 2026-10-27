@@ -26,6 +26,7 @@ import Text.Pandoc
   , readLaTeX
   , readMarkdown
   , readXML
+  , readXlsx
   , writeDocx
   , writeJSON
   , writeLaTeX
@@ -56,7 +57,7 @@ optionsParser = Options
       ( long "input"
      <> short 'i'
      <> metavar "FILE"
-     <> help "Input PDF, DOCX, Markdown, LaTeX, JSON, or XML file"
+     <> help "Input PDF, DOCX, Markdown, LaTeX, JSON, Xlsx, or XML file"
       )
   <*> optional
       (strOption
@@ -183,8 +184,15 @@ readDocument input =
       text <- liftIO (readUtf8File input)
       readXML def text
 
+    ".xlsx" -> do
+      bytes <- liftIO (BSL.readFile input)
+      readXlsx def bytes
+    ".xlsm" -> do
+      bytes <- liftIO (BSL.readFile input)
+      readXlsx def bytes
+
     _ -> liftIO $ die
-      "fileforge: unsupported input format; use .pdf, .docx, .txt, .md, .markdown, .tex, .json, or .xml"
+      "fileforge: unsupported input format; use .pdf, .docx, .txt, .md, .markdown, .tex, .json, .xml, or .xlsx"
 
   where
     readMarkdownFile = do
