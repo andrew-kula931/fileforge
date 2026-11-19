@@ -5,7 +5,7 @@ This repository presents a CLI tool that performs operations/conversions on file
 ## Features
 
 - Reads PDF, DOCX, Latex, JSON, XML, and Markdown (`.md` or `.markdown`) files.
-- Writes to any of the aforementioned formats (except PDF).
+- Writes to any of the aforementioned formats, including PDF.
 - Preserves supported document structure with `--formatted`, or flattens the
   content to plain text without it.
 
@@ -19,6 +19,9 @@ cabal run fileforge -- -i report.pdf
 cabal run fileforge -- -i report.docx -o report.md --formatted
 cabal run fileforge -- -i notes.md -o notes.docx --formatted
 
+# Export Markdown to PDF
+cabal run fileforge -- -i notes.md -o notes.pdf --formatted
+
 # Flatten Markdown into unformatted text
 cabal run fileforge -- -i notes.markdown -o notes.txt
 
@@ -31,8 +34,8 @@ Formats are selected by file extension, case-insensitively. Omitting `--output`
 different files.
 
 Without `--formatted`, whitespace is collapsed and source formatting is removed,
-including for DOCX and Markdown output. With `--formatted`, text output retains
-paragraph structure; DOCX and Markdown retain the structure supported by Pandoc.
+including for DOCX, Markdown, and PDF output. With `--formatted`, text output retains
+paragraph structure; DOCX, Markdown, and PDF retain the structure supported by Pandoc.
 Conversion does not reproduce exact page layout, fonts, or styling.
 
 With `--assets` on PDF input, each page is rendered as `assets/page-NNN.png`
@@ -43,7 +46,7 @@ PDF input requires Poppler's `pdftotext` executable on `PATH`. Its extracted tex
 is processed through Pandoc, as before; PDF structure preservation is limited to
 what that extraction retains. PDF asset extraction additionally requires
 ImageMagick (`magick`) with a PDF delegate (typically Ghostscript). PDF output
-and OCR of scanned PDFs are not supported.
+uses Pandoc with `pdflatex` on `PATH`. OCR of scanned PDFs is not supported.
 
 ## Tests
 

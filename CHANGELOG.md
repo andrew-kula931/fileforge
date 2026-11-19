@@ -9,3 +9,5 @@
   Markdown output; unformatted conversions flatten content to plain text.
 * Add `--assets` for PDF input to render each page into an `assets/` directory
   via ImageMagick's `magick` command.
+* Add PDF output via Pandoc and `pdflatex`, selected by a `.pdf` output
+  extension.

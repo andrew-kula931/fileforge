@@ -45,6 +45,8 @@ import Text.Pandoc
   , writeXML
   , runIO
   )
+import Text.Pandoc.PDF (makePDF)
+import Text.Pandoc.Templates (compileDefaultTemplate)
 
 data Options = Options
   { inputFile  :: FilePath
@@ -60,6 +62,7 @@ data OutputFormat
   | LaTeX
   | JSON
   | XML
+  | PDF
   deriving (Show, Eq)
 
 optionsParser :: Parser Options
@@ -158,6 +161,20 @@ convertDocument opts = do
       XML ->
         encodeText <$> writeXML def outputDocument
 
+      PDF -> do
+        template <- compileDefaultTemplate (T.pack "latex")
+        pdfResult <- makePDF "pdflatex" [] writeLaTeX
+          def { writerTemplate = Just template }
+          outputDocument
+        case pdfResult of
+          Left errBytes ->
+            liftIO $ die $
+              "fileforge: PDF generation failed: "
+                ++ T.unpack
+                     (TextEncoding.decodeUtf8Lenient (BSL.toStrict errBytes))
+          Right pdf ->
+            pure pdf
+
   converted <- either
     (die . ("fileforge: Pandoc error: " ++) . show)
     pure
@@ -176,8 +193,9 @@ parseOutputFormat output =
     ".tex"      -> pure LaTeX
     ".json"     -> pure JSON
     ".xml"      -> pure XML
+    ".pdf"      -> pure PDF
     _ -> die
-      "fileforge: unsupported output format; use .txt, .docx, .md, .markdown, .tex, .json, or .xml"
+      "fileforge: unsupported output format; use .txt, .docx, .md, .markdown, .tex, .json, .xml, or .pdf"
 
 readDocument :: FilePath -> PandocIO Pandoc
 readDocument input =
