@@ -7,3 +7,5 @@
   Formats are selected by file extension; output still defaults to `.txt`.
 * Extend `--formatted` to retain supported document structure in DOCX and
   Markdown output; unformatted conversions flatten content to plain text.
+* Add `--assets` for PDF input to render each page into an `assets/` directory
+  via ImageMagick's `magick` command.

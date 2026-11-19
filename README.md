@@ -21,6 +21,9 @@ cabal run fileforge -- -i notes.md -o notes.docx --formatted
 
 # Flatten Markdown into unformatted text
 cabal run fileforge -- -i notes.markdown -o notes.txt
+
+# Render each PDF page into assets/ next to the output file
+cabal run fileforge -- -i report.pdf -o report.md --assets
 ```
 
 Formats are selected by file extension, case-insensitively. Omitting `--output`
@@ -32,9 +35,15 @@ including for DOCX and Markdown output. With `--formatted`, text output retains
 paragraph structure; DOCX and Markdown retain the structure supported by Pandoc.
 Conversion does not reproduce exact page layout, fonts, or styling.
 
+With `--assets` on PDF input, each page is rendered as `assets/page-NNN.png`
+beside the output file using ImageMagick's `magick` command. `--assets` is
+rejected for non-PDF inputs.
+
 PDF input requires Poppler's `pdftotext` executable on `PATH`. Its extracted text
 is processed through Pandoc, as before; PDF structure preservation is limited to
-what that extraction retains. PDF output and OCR of scanned PDFs are not supported.
+what that extraction retains. PDF asset extraction additionally requires
+ImageMagick (`magick`) with a PDF delegate (typically Ghostscript). PDF output
+and OCR of scanned PDFs are not supported.
 
 ## Tests
 

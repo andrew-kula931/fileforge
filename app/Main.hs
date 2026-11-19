@@ -7,9 +7,18 @@ import Data.Char (toLower)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TextEncoding
 import Options.Applicative
-import System.Directory (canonicalizePath, doesPathExist)
+import System.Directory
+  ( canonicalizePath
+  , createDirectoryIfMissing
+  , doesPathExist
+  )
 import System.Exit (die, ExitCode(..))
-import System.FilePath (replaceExtension, takeExtension)
+import System.FilePath
+  ( (</>)
+  , replaceExtension
+  , takeDirectory
+  , takeExtension
+  )
 import System.IO.Error (catchIOError)
 import System.Process (readProcessWithExitCode)
 import Text.Pandoc
@@ -41,6 +50,7 @@ data Options = Options
   { inputFile  :: FilePath
   , outputFile :: Maybe FilePath
   , formatted  :: Bool
+  , extractAssets :: Bool
   } deriving (Show)
 
 data OutputFormat
@@ -71,6 +81,10 @@ optionsParser = Options
       ( long "formatted"
      <> help "Preserve document structure; otherwise collapse to plain text"
       )
+  <*> switch
+      ( long "assets"
+     <> help "When reading a PDF, render each page into an assets/ directory"
+      )
 
 parserInfo :: ParserInfo Options
 parserInfo = info (optionsParser <**> helper)
@@ -91,6 +105,10 @@ convertDocument opts = do
   let input = inputFile opts
       output = maybe (replaceExtension input "txt")
                      id (outputFile opts)
+      isPdf = map toLower (takeExtension input) == ".pdf"
+
+  when (extractAssets opts && not isPdf) $
+    die "fileforge: --assets is only supported for PDF input"
 
   inputPath <- canonicalizePath input
 
@@ -106,6 +124,9 @@ convertDocument opts = do
     die "fileforge: input and output must be different files"
 
   outputFormat <- parseOutputFormat output
+
+  when (extractAssets opts) $
+    extractPdfAssets input (takeDirectory output </> "assets")
 
   result <- runIO $ do
     document <- readDocument input
@@ -235,3 +256,20 @@ extractPdf input = do
       die ("fileforge: PDF extraction failed: " ++ stderrText)
     ExitSuccess ->
       pure (T.pack extracted)
+
+-- Render each PDF page into assets/page-NNN.png via ImageMagick.
+extractPdfAssets :: FilePath -> FilePath -> IO ()
+extractPdfAssets input assetsDir = do
+  createDirectoryIfMissing True assetsDir
+  let pattern = assetsDir </> "page-%03d.png"
+  (exitCode, _, stderrText) <-
+    readProcessWithExitCode
+      "magick"
+      ["-density", "150", input, pattern]
+      ""
+
+  case exitCode of
+    ExitFailure _ ->
+      die ("fileforge: PDF asset extraction failed: " ++ stderrText)
+    ExitSuccess ->
+      putStrLn $ "Extracted PDF assets to: " ++ assetsDir
