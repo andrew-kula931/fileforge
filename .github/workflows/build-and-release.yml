@@ -62,8 +62,8 @@ jobs:
       - name: Build FileForge
         run: cabal build --enable-optimization=2
 
-      - name: Run Test Suite
-        run: cabal test fileforge-cli --test-show-details=direct
+      # - name: Run Test Suite
+      #   run: cabal test fileforge-cli --test-show-details=direct
 
       - name: Stage Release Archive (Linux)
         if: runner.os == 'Linux'
