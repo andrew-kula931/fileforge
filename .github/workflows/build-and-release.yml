@@ -68,7 +68,7 @@ jobs:
       - name: Stage Release Archive (Linux)
         if: runner.os == 'Linux'
         run: |
-          EXE_PATH=$(cabal list-bin exe:fileforge)
+          EXE_PATH=$(cabal list-bin --enable-optimization=2 exe:fileforge)
           mkdir -p dist_archive/tools dist_archive/scripts
           cp "$EXE_PATH" dist_archive/fileforge
           cp tools/README.txt dist_archive/tools/
@@ -80,7 +80,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $exePath = (cabal list-bin exe:fileforge).Trim()
+          $exePath = (cabal list-bin --enable-optimization=2 exe:fileforge).Trim()
           New-Item -ItemType Directory -Path dist_archive/tools, dist_archive/scripts -Force | Out-Null
           Copy-Item -Path $exePath -Destination dist_archive\fileforge.exe
           Copy-Item -Path tools/README.txt -Destination dist_archive\tools\README.txt
