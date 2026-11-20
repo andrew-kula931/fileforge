@@ -1,4 +1,5 @@
-# FileForge Portable Tools Directory
+FileForge Portable Tools Directory
+----------------------------------
 
 This directory ('tools') is automatically checked by FileForge when resolving
 external helper tools on Windows and Linux before searching the system PATH.
