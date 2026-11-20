@@ -11,3 +11,6 @@
   via ImageMagick's `magick` command.
 * Add PDF output via Pandoc and `pdflatex`, selected by a `.pdf` output
   extension.
+* Add `--template` (`-t`) option for LaTeX output to wrap generated LaTeX in
+  custom templates (e.g. `app/examples/ieee_template.tex`), supporting Pandoc
+  template variables and auto-injecting `$body$` when omitted.

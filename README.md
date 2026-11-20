@@ -8,6 +8,7 @@ This repository presents a CLI tool that performs operations/conversions on file
 - Writes to any of the aforementioned formats, including PDF.
 - Preserves supported document structure with `--formatted`, or flattens the
   content to plain text without it.
+- Supports custom LaTeX templates when converting to LaTeX with `--template` (`-t`).
 
 ## Usage
 
@@ -18,6 +19,9 @@ cabal run fileforge -- -i report.pdf
 # Preserve headings, emphasis, lists, and paragraphs when converting documents
 cabal run fileforge -- -i report.docx -o report.md --formatted
 cabal run fileforge -- -i notes.md -o notes.docx --formatted
+
+# Convert Markdown to LaTeX with a template
+cabal run fileforge -- -i notes.md -o paper.tex --template app/examples/some_template.tex --formatted
 
 # Export Markdown to PDF
 cabal run fileforge -- -i notes.md -o notes.pdf --formatted
@@ -41,6 +45,12 @@ Conversion does not reproduce exact page layout, fonts, or styling.
 With `--assets` on PDF input, each page is rendered as `assets/page-NNN.png`
 beside the output file using ImageMagick's `magick` command. `--assets` is
 rejected for non-PDF inputs.
+
+With `--template` (`-t`), you can provide a custom LaTeX template when converting
+to LaTeX (`.tex`). It supports Pandoc template variables (`$body$`, `$title$`, etc.)
+and automatically injects `$body$` before `\end{document}` if omitted. `--template`
+is rejected for non-LaTeX outputs. An example IEEE conference template is available
+at `app/examples/ieee_template.tex`.
 
 PDF input requires Poppler's `pdftotext` executable on `PATH`. Its extracted text
 is processed through Pandoc, as before; PDF structure preservation is limited to

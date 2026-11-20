@@ -1,0 +1,58 @@
+\documentclass[conference]{IEEEtran}
+
+% Basic packages 
+\usepackage{amsmath}    % math environments (equation, align, etc.)
+\usepackage{graphicx}   % includegraphics for figures
+\usepackage{cite}       % compact, sorted citations
+\usepackage{url}        % \url for web addresses
+
+% (Optional) adjust hyphenation or penalties if needed
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+\begin{document}
+
+$if(title)$
+\title{$title$}
+$else$
+\title{Paper Title Goes Here: A Short Descriptive Title}
+$endif$
+
+$if(author)$
+\author{$author$}
+$else$
+\author{
+  \IEEEauthorblockN{First Author\IEEEauthorrefmark{1}, Second Author\IEEEauthorrefmark{2}}
+  \IEEEauthorblockA{\IEEEauthorrefmark{1}Department of Something, University A\\
+    Email: author1@example.com}
+  \and
+  \IEEEauthorblockN{Third Author\IEEEauthorrefmark{3}}
+  \IEEEauthorblockA{\IEEEauthorrefmark{3}Company or Institution B\\
+    Email: author3@example.com}
+}
+$endif$
+
+\maketitle
+
+$if(abstract)$
+\begin{abstract}
+$abstract$
+\end{abstract}
+$else$
+\begin{abstract}
+A concise abstract (100--200 words) that summarizes the problem, the method, and the main result. The abstract should be a single paragraph and self-contained.
+\end{abstract}
+$endif$
+
+$if(keywords)$
+\begin{IEEEkeywords}
+$keywords$
+\end{IEEEkeywords}
+$else$
+\begin{IEEEkeywords}
+keyword1, keyword2, keyword3
+\end{IEEEkeywords}
+$endif$
+
+$body$
+
+\end{document}

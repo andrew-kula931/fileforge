@@ -4,6 +4,7 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Lazy as BSL
 import Data.Char (toLower)
+import Data.Maybe (isJust)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TextEncoding
 import Options.Applicative
@@ -21,6 +22,7 @@ import System.FilePath
   )
 import System.IO.Error (catchIOError)
 import System.Process (readProcessWithExitCode)
+import Template (loadLaTeXTemplate)
 import Text.Pandoc
   ( def
   , Pandoc(..)
@@ -49,10 +51,11 @@ import Text.Pandoc.PDF (makePDF)
 import Text.Pandoc.Templates (compileDefaultTemplate)
 
 data Options = Options
-  { inputFile  :: FilePath
-  , outputFile :: Maybe FilePath
-  , formatted  :: Bool
+  { inputFile     :: FilePath
+  , outputFile    :: Maybe FilePath
+  , formatted     :: Bool
   , extractAssets :: Bool
+  , templateFile  :: Maybe FilePath
   } deriving (Show)
 
 data OutputFormat
@@ -88,6 +91,13 @@ optionsParser = Options
       ( long "assets"
      <> help "When reading a PDF, render each page into an assets/ directory"
       )
+  <*> optional
+      (strOption
+        ( long "template"
+       <> short 't'
+       <> metavar "FILE"
+       <> help "LaTeX template file to use when converting to LaTeX"
+        ))
 
 parserInfo :: ParserInfo Options
 parserInfo = info (optionsParser <**> helper)
@@ -113,6 +123,11 @@ convertDocument opts = do
   when (extractAssets opts && not isPdf) $
     die "fileforge: --assets is only supported for PDF input"
 
+  outputFormat <- parseOutputFormat output
+
+  when (isJust (templateFile opts) && outputFormat /= LaTeX) $
+    die "fileforge: --template is only supported for LaTeX output"
+
   inputPath <- canonicalizePath input
 
   -- canonicalizePath also requires the output to exist.
@@ -126,10 +141,12 @@ convertDocument opts = do
   when (inputPath == outputPath) $
     die "fileforge: input and output must be different files"
 
-  outputFormat <- parseOutputFormat output
-
   when (extractAssets opts) $
     extractPdfAssets input (takeDirectory output </> "assets")
+
+  mTemplate <- case templateFile opts of
+    Nothing   -> pure Nothing
+    Just path -> Just <$> loadLaTeXTemplate path
 
   result <- runIO $ do
     document <- readDocument input
@@ -152,8 +169,11 @@ convertDocument opts = do
       Markdown ->
         encodeText <$> writeMarkdown markdownWriter outputDocument
 
-      LaTeX ->
-        encodeText <$> writeLaTeX def outputDocument
+      LaTeX -> do
+        let writerOpts = case mTemplate of
+              Just tpl -> def { writerTemplate = Just tpl }
+              Nothing  -> def
+        encodeText <$> writeLaTeX writerOpts outputDocument
 
       JSON ->
         encodeText <$> writeJSON def outputDocument
