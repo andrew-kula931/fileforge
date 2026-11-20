@@ -54,7 +54,7 @@ jobs:
       - name: Install System Dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install poppler -y --no-progress
+          choco install poppler ghostscript -y --no-progress
 
       - name: Update Cabal
         run: cabal update
