@@ -21,7 +21,9 @@ import System.FilePath
   , takeExtension
   )
 import System.IO.Error (catchIOError)
+import qualified System.Info as SysInfo
 import System.Process (readProcessWithExitCode)
+import ExternalTools (Tool(..), getRequiredTool)
 import Template (loadLaTeXTemplate)
 import Text.Pandoc
   ( def
@@ -56,6 +58,8 @@ data Options = Options
   , formatted     :: Bool
   , extractAssets :: Bool
   , templateFile  :: Maybe FilePath
+  , toolsDir      :: Maybe FilePath
+  , pdfEngine     :: Maybe String
   } deriving (Show)
 
 data OutputFormat
@@ -98,6 +102,19 @@ optionsParser = Options
        <> metavar "FILE"
        <> help "LaTeX template file to use when converting to LaTeX"
         ))
+  <*> optional
+      (strOption
+        ( long "tools-dir"
+       <> short 'T'
+       <> metavar "DIR"
+       <> help "Directory containing external tool binaries (pdftotext, magick, pdflatex, etc.)"
+        ))
+  <*> optional
+      (strOption
+        ( long "pdf-engine"
+       <> metavar "ENGINE"
+       <> help "LaTeX engine for PDF output (defaults to pdflatex; e.g. xelatex, tectonic)"
+        ))
 
 parserInfo :: ParserInfo Options
 parserInfo = info (optionsParser <**> helper)
@@ -138,18 +155,18 @@ convertDocument opts = do
     then canonicalizePath output
     else pure output
 
-  when (inputPath == outputPath) $
+  when (isSameFile inputPath outputPath) $
     die "fileforge: input and output must be different files"
 
   when (extractAssets opts) $
-    extractPdfAssets input (takeDirectory output </> "assets")
+    extractPdfAssets (toolsDir opts) input (takeDirectory output </> "assets")
 
   mTemplate <- case templateFile opts of
     Nothing   -> pure Nothing
     Just path -> Just <$> loadLaTeXTemplate path
 
   result <- runIO $ do
-    document <- readDocument input
+    document <- readDocument (toolsDir opts) input
 
     outputDocument <- if formatted opts
       then pure document
@@ -182,8 +199,10 @@ convertDocument opts = do
         encodeText <$> writeXML def outputDocument
 
       PDF -> do
+        let engineName = maybe "pdflatex" id (pdfEngine opts)
+        enginePath <- liftIO $ getRequiredTool (toolsDir opts) (ToolPdfEngine engineName)
         template <- compileDefaultTemplate (T.pack "latex")
-        pdfResult <- makePDF "pdflatex" [] writeLaTeX
+        pdfResult <- makePDF enginePath [] writeLaTeX
           def { writerTemplate = Just template }
           outputDocument
         case pdfResult of
@@ -203,6 +222,11 @@ convertDocument opts = do
   BSL.writeFile output converted
   putStrLn $ "Successfully converted: " ++ output
 
+isSameFile :: FilePath -> FilePath -> Bool
+isSameFile p1 p2
+  | SysInfo.os == "mingw32" = map toLower p1 == map toLower p2
+  | otherwise              = p1 == p2
+
 parseOutputFormat :: FilePath -> IO OutputFormat
 parseOutputFormat output =
   case map toLower (takeExtension output) of
@@ -217,15 +241,15 @@ parseOutputFormat output =
     _ -> die
       "fileforge: unsupported output format; use .txt, .docx, .md, .markdown, .tex, .json, .xml, or .pdf"
 
-readDocument :: FilePath -> PandocIO Pandoc
-readDocument input =
+readDocument :: Maybe FilePath -> FilePath -> PandocIO Pandoc
+readDocument mToolsDir input =
   case map toLower (takeExtension input) of
     ".txt"      -> readMarkdownFile
     ".md"       -> readMarkdownFile
     ".markdown" -> readMarkdownFile
 
     ".pdf" -> do
-      extracted <- liftIO (extractPdf input)
+      extracted <- liftIO (extractPdf mToolsDir input)
       readMarkdown (def { readerExtensions = pandocExtensions }) extracted
 
     ".docx" -> do
@@ -281,11 +305,12 @@ markdownWriter = def
   { writerExtensions = pandocExtensions
   }
 
-extractPdf :: FilePath -> IO T.Text
-extractPdf input = do
+extractPdf :: Maybe FilePath -> FilePath -> IO T.Text
+extractPdf mToolsDir input = do
+  cmd <- getRequiredTool mToolsDir ToolPdfToText
   (exitCode, extracted, stderrText) <-
     readProcessWithExitCode
-      "pdftotext"
+      cmd
       ["-layout", "-enc", "UTF-8", input, "-"]
       ""
 
@@ -296,13 +321,14 @@ extractPdf input = do
       pure (T.pack extracted)
 
 -- Render each PDF page into assets/page-NNN.png via ImageMagick.
-extractPdfAssets :: FilePath -> FilePath -> IO ()
-extractPdfAssets input assetsDir = do
+extractPdfAssets :: Maybe FilePath -> FilePath -> FilePath -> IO ()
+extractPdfAssets mToolsDir input assetsDir = do
+  cmd <- getRequiredTool mToolsDir ToolMagick
   createDirectoryIfMissing True assetsDir
   let pattern = assetsDir </> "page-%03d.png"
   (exitCode, _, stderrText) <-
     readProcessWithExitCode
-      "magick"
+      cmd
       ["-density", "150", input, pattern]
       ""
 

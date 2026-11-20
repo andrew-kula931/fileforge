@@ -3,7 +3,7 @@
 module Main where
 
 import Control.Exception (bracket)
-import Control.Monad (forM_, unless)
+import Control.Monad (forM_, unless, when)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy as BSL
 import Data.List (isInfixOf)
@@ -16,6 +16,7 @@ import System.Directory
 import System.Exit (ExitCode(..))
 import System.FilePath ((</>), replaceExtension, takeExtension)
 import System.IO (hClose, openTempFile)
+import System.IO.Error (catchIOError)
 import System.Process (readProcessWithExitCode)
 import Text.Pandoc
   ( Block(..), Inline(..), Pandoc(..), PandocIO, ReaderOptions(..), def
@@ -85,8 +86,11 @@ main = bracket temporaryDirectory removeDirectoryRecursive $ \dir -> do
   expectFailure ["-i", markdown, "-o", markdown] "different files"
   let link = dir </> "link.md"
   absoluteInput <- canonicalizePath markdown
-  createFileLink absoluteInput link
-  expectFailure ["-i", markdown, "-o", link] "different files"
+  canSymlink <- catchIOError
+    (createFileLink absoluteInput link >> pure True)
+    (\_ -> pure False)
+  when canSymlink $
+    expectFailure ["-i", markdown, "-o", link] "different files"
   original <- TIO.readFile markdown
   assert "input remains untouched" (original == sourceText)
 
@@ -168,6 +172,10 @@ main = bracket temporaryDirectory removeDirectoryRecursive $ \dir -> do
     "--template is only supported for LaTeX output"
   expectFailure ["-i", markdown, "-o", dir </> "missing.tex", "--template", dir </> "nonexistent.tex"]
     "template file does not exist"
+
+  expectFailure
+    ["-i", markdown, "-o", dir </> "custom_engine.pdf", "--pdf-engine", "nonexistent-engine"]
+    "external tool 'nonexistent-engine' is required but was not found"
 
   putStrLn "All document conversion CLI tests passed."
   where

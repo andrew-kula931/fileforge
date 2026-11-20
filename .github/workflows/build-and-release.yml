@@ -1,0 +1,103 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: fileforge-windows-x86_64
+            bin_name: fileforge.exe
+          - os: ubuntu-latest
+            artifact_name: fileforge-linux-x86_64
+            bin_name: fileforge
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Haskell (GHC & Cabal)
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.10.3'
+          cabal-version: '3.16.1.0'
+
+      - name: Cache Cabal dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cabal/store
+            C:\Users\runneradmin\AppData\Roaming\cabal\store
+            dist-newstyle
+          key: ${{ runner.os }}-cabal-${{ hashFiles('**/*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-cabal-
+
+      - name: Install System Dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils imagemagick texlive-latex-base
+
+      - name: Install System Dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install poppler -y --no-progress
+
+      - name: Update Cabal
+        run: cabal update
+
+      - name: Build FileForge
+        run: cabal build --enable-optimization=2
+
+      - name: Run Test Suite
+        run: cabal test fileforge-cli --test-show-details=direct
+
+      - name: Stage Release Archive (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          EXE_PATH=$(cabal list-bin exe:fileforge)
+          mkdir -p dist_archive/tools dist_archive/scripts
+          cp "$EXE_PATH" dist_archive/fileforge
+          cp tools/README.txt dist_archive/tools/
+          cp scripts/fetch-tools.ps1 dist_archive/scripts/
+          cp README.md LICENSE CHANGELOG.md dist_archive/
+          cd dist_archive && zip -r "../${{ matrix.artifact_name }}.zip" .
+
+      - name: Stage Release Archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $exePath = (cabal list-bin exe:fileforge).Trim()
+          New-Item -ItemType Directory -Path dist_archive/tools, dist_archive/scripts -Force | Out-Null
+          Copy-Item -Path $exePath -Destination dist_archive\fileforge.exe
+          Copy-Item -Path tools/README.txt -Destination dist_archive\tools\README.txt
+          Copy-Item -Path scripts/fetch-tools.ps1 -Destination dist_archive\scripts\fetch-tools.ps1
+          Copy-Item -Path README.md, LICENSE, CHANGELOG.md -Destination dist_archive\
+          Compress-Archive -Path dist_archive\* -DestinationPath "${{ matrix.artifact_name }}.zip" -Force
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.zip
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

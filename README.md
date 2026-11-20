@@ -23,8 +23,14 @@ cabal run fileforge -- -i notes.md -o notes.docx --formatted
 # Convert Markdown to LaTeX with a template
 cabal run fileforge -- -i notes.md -o paper.tex --template app/examples/some_template.tex --formatted
 
-# Export Markdown to PDF
+# Export Markdown to PDF (defaulting to pdflatex)
 cabal run fileforge -- -i notes.md -o notes.pdf --formatted
+
+# Export to PDF using a specific engine (e.g. tectonic, xelatex)
+cabal run fileforge -- -i notes.md -o notes.pdf --pdf-engine tectonic --formatted
+
+# Use a custom folder containing helper tools (pdftotext, magick, etc.)
+cabal run fileforge -- -i report.pdf -o report.txt -T tools/
 
 # Flatten Markdown into unformatted text
 cabal run fileforge -- -i notes.markdown -o notes.txt
@@ -52,11 +58,61 @@ and automatically injects `$body$` before `\end{document}` if omitted. `--templa
 is rejected for non-LaTeX outputs. An example IEEE conference template is available
 at `app/examples/ieee_template.tex`.
 
-PDF input requires Poppler's `pdftotext` executable on `PATH`. Its extracted text
-is processed through Pandoc, as before; PDF structure preservation is limited to
-what that extraction retains. PDF asset extraction additionally requires
-ImageMagick (`magick`) with a PDF delegate (typically Ghostscript). PDF output
-uses Pandoc with `pdflatex` on `PATH`. OCR of scanned PDFs is not supported.
+## External Tool Dependencies & Resolution
+
+FileForge invokes external tools for specific operations:
+- **PDF Input**: requires Poppler's `pdftotext`.
+- **PDF Asset Extraction (`--assets`)**: requires ImageMagick's `magick` (with a PDF delegate such as Ghostscript).
+- **PDF Output**: uses Pandoc's PDF generator with a LaTeX engine (`pdflatex` by default, or an alternative specified via `--pdf-engine`, e.g. `tectonic`, `xelatex`, or `lualatex`).
+
+### Portable Discovery Order
+Instead of requiring executables to be manually configured in the system `PATH`, FileForge resolves each tool using a prioritized 4-tier lookup:
+1. **CLI Flag**: `--tools-dir DIR` (or `-T DIR`) or direct executable via `--pdf-engine`.
+2. **Environment Variables**: Tool-specific (`PDFTOTEXT_PATH`, `MAGICK_PATH`, `PDF_ENGINE_PATH`) or `FILEFORGE_TOOLS_DIR`.
+3. **Application Sibling Directories**: Checks `<exe_dir>/tools/`, `<exe_dir>/bin/`, and `<exe_dir>/` relative to the running binary.
+4. **System `PATH`**: Standard system path lookup via OS environment.
+
+---
+
+## Platform Setup & Installation
+
+### Windows (x86_64)
+
+#### Primary: Zero-Install Portable Setup (Recommended)
+FileForge can run completely standalone without installing packages or modifying system environment variables.
+Run the bundled PowerShell script:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/fetch-tools.ps1
+```
+This automatically downloads standalone Windows builds of `pdftotext.exe`, `magick.exe`, and `tectonic.exe` directly into the `tools/` directory.
+
+Alternatively, you can manually place `pdftotext.exe` and `magick.exe` inside a `tools/` folder next to `fileforge.exe`.
+
+#### Alternative: Windows Package Manager (Winget)
+If you prefer installing tools system-wide:
+```powershell
+winget install poppler ImageMagick.ImageMagick
+
+# For PDF export:
+winget install Tectonic.Tectonic
+# or
+winget install MiKTeX.MiKTeX
+```
+
+---
+
+### Linux (Arch Linux)
+
+Install the dependencies using `pacman`:
+```sh
+sudo pacman -S poppler imagemagick texlive-basic
+```
+*(Optional) If you prefer using Tectonic for standalone PDF generation:*
+```sh
+sudo pacman -S tectonic
+```
+
+---
 
 ## Tests
 
