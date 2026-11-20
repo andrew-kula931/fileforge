@@ -29,18 +29,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Haskell (GHC & Cabal)
-        uses: haskell-actions/setup@v2
+        uses: haskell-actions/setup@v2.12.1
         with:
           ghc-version: '9.10.3'
           cabal-version: '3.16.1.0'
 
       - name: Cache Cabal dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
-          path: |
-            ~/.cabal/store
-            C:\Users\runneradmin\AppData\Roaming\cabal\store
-            dist-newstyle
+          path: 
+            - ~/.cabal/store
+            - C:\Users\runneradmin\AppData\Roaming\cabal\store
+            - dist-newstyle
           key: ${{ runner.os }}-cabal-${{ hashFiles('**/*.cabal') }}
           restore-keys: |
             ${{ runner.os }}-cabal-
@@ -89,14 +89,14 @@ jobs:
           Compress-Archive -Path dist_archive\* -DestinationPath "${{ matrix.artifact_name }}.zip" -Force
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}.zip
 
       - name: Publish to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.4
         with:
           files: ${{ matrix.artifact_name }}.zip
         env:
